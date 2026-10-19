@@ -86,6 +86,8 @@ export default function useMonSprite(mon: MonSpriteData): MonSpriteResult {
   useEffect(() => {
     if (spriteResult.errorMessage || spriteResult.path) return
 
+    const modifiedMon = { ...mon }
+
     if (isMegaStone(mon.heldItemIndex)) {
       const megaForStone = FullMetadataLookup(mon)?.megaEvolutions.find(
         (mega) => mega.requiredItemId === mon.heldItemIndex
@@ -96,7 +98,7 @@ export default function useMonSprite(mon: MonSpriteData): MonSpriteResult {
       mon.formIndex = displayIndexAdder(mon.heldItemIndex)(mon.formIndex)
     }
 
-    const result = getMonSprite(mon, enabledPlugins)
+    const result = getMonSprite(modifiedMon, enabledPlugins)
     switch (result.type) {
       case 'default':
         setSpriteResult({
@@ -106,7 +108,7 @@ export default function useMonSprite(mon: MonSpriteData): MonSpriteResult {
         return
       case 'plugin':
         const { plugin, spritePath } = result
-        getPluginSprite(plugin, spritePath, backend).then(setSpriteResult)
+        getPluginSprite(plugin, spritePath, backend).then(setSpriteResult).catch(console.error)
     }
   }, [
     mon.format,

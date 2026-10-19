@@ -27,7 +27,7 @@ export default function PokemonDndContext(props: { children?: ReactNode }) {
     <DragDropProvider<DragPayload>
       onDragEnd={async (e) => {
         const dest = e.operation.target?.data
-        let payload: Option<DragPayload> = e.operation.source?.data
+        const payload: Option<DragPayload> = e.operation.source?.data
 
         const dropElementId = e.operation.target?.id
 

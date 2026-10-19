@@ -208,7 +208,7 @@ function PKMConversion() {
   const schema = getConvertSettingsSchema().settings_schema
 
   const grouped = Object.groupBy(schema.entries(), ([identifier]) => {
-    return ConvertStrategies.getCategoryName(identifier as ConvertStrategyKey)
+    return ConvertStrategies.getCategoryName(identifier)
   })
 
   return (
@@ -222,7 +222,7 @@ function PKMConversion() {
               {settings?.map(([identifier, setting]) => (
                 <PKMConversionSettingControl
                   key={identifier}
-                  identifier={identifier as ConvertStrategyKey}
+                  identifier={identifier}
                   descriptor={setting}
                 />
               ))}
@@ -313,8 +313,7 @@ function PKMBoolConversionSettingControl({
             })
           }
           checked={
-            (defaultConvertStrategy[identifier as keyof ConvertStrategy] as boolean | undefined) ??
-            descriptor.default
+            (defaultConvertStrategy[identifier] as boolean | undefined) ?? descriptor.default
           }
         />
       </span>

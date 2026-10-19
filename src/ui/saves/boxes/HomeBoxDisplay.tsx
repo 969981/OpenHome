@@ -358,9 +358,9 @@ function SingleBoxMonDisplay() {
         <div className="home-box-grid">
           {slots.map(({ monPromise, location, identifier }, index) => {
             // if underlying data changes but this key doesn't, the box cell will be stale and may not display the correct species
-            let uniqueKey = identifier ?? `${currentBoxIndex}-${index}`
+            const uniqueKey = identifier ?? `${currentBoxIndex}-${index}`
 
-            let monNowOrLater: Option<PKMInterface> = undefined
+            const monNowOrLater: Option<PKMInterface> = undefined
 
             // if (monPromise && !isThenable(monPromise) && isResult(monPromise)) {
             //   if (R.isOk(monPromise)) {
@@ -387,9 +387,9 @@ function SingleBoxMonDisplay() {
                 dragID={`home_${currentBoxIndex}_${index}`}
                 location={location}
                 openhomeId={identifier}
-                onDrop={(importedMons) => {
+                onDrop={async (importedMons) => {
                   if (importedMons) {
-                    importMonsToLocation(importedMons, location)
+                    await importMonsToLocation(importedMons, location)
                   }
                 }}
                 // don't allow a swap with a pokémon not supported by the source save

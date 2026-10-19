@@ -100,10 +100,10 @@ function BoxCell(props: BoxCellProps) {
           importedMons.push(mon)
           pokedexUpdates.push(...updatesFromMon(mon))
         } catch (e) {
-          displayError('Error Importing Pokémon', `${e}`)
+          displayError('Error Importing Pokémon', `${String(e)}`)
         }
 
-        backend.registerInPokedex(pokedexUpdates)
+        await backend.registerInPokedex(pokedexUpdates)
       }
       onDrop(importedMons)
     },
@@ -128,9 +128,9 @@ function BoxCell(props: BoxCellProps) {
     setRenameOpen(true)
   }, [mon])
 
-  const confirmRename = useCallback(() => {
+  const confirmRename = useCallback(async () => {
     if (!(mon instanceof OHPKM)) return
-    setMonNickname(
+    await setMonNickname(
       mon.openhomeId,
       renameValue.trim() || Lookup.speciesName(mon.nationalDex, mon.language)
     )
@@ -181,12 +181,14 @@ function BoxCell(props: BoxCellProps) {
     [location, mon]
   )
 
+  const monDisplayColor = mon?.displayColor
+
   const cellBackgroundColor = useMemo(() => {
     if (disabled || isFilteredOut) return '#555'
     if (isSelected) return '#4ade8080'
-    if (mon?.displayColor && showBackgroundColor) return mon.displayColor
+    if (monDisplayColor && showBackgroundColor) return monDisplayColor
     return '#6662'
-  }, [disabled, isFilteredOut, isSelected, mon?.displayColor, showBackgroundColor])
+  }, [disabled, isFilteredOut, isSelected, monDisplayColor, showBackgroundColor])
 
   const handleClick = useCallback(() => {
     if (multiSelectEnabled && mon && onToggleSelect) {
@@ -223,10 +225,10 @@ function BoxCell(props: BoxCellProps) {
             borderStyle: borderColor ? 'solid' : undefined,
             ...props.style,
           }}
-          onDrop={(e) => {
+          onDrop={async (e) => {
             e.preventDefault()
             e.stopPropagation()
-            onDropFromFiles(e.dataTransfer.files)
+            await onDropFromFiles(e.dataTransfer.files)
           }}
           onMouseEnter={handleMouseEnter}
           title={disabledReason}

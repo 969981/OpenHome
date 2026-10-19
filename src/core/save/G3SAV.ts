@@ -248,7 +248,7 @@ export class G3SAV extends OfficialSAV<PK3> {
   primarySaveOffset: number
 
   origin: OriginGame
-  isPlugin: false = false
+  isPlugin = false as const
 
   boxRows = 5
   boxColumns = 6
@@ -437,7 +437,7 @@ export class G3SAV extends OfficialSAV<PK3> {
   }
 
   getMonAt(boxIndex: number, boxSlot: number): Option<PK3> {
-    let slotResult = this.boxesWithResults.at(boxIndex)?.boxSlots.at(boxSlot)
+    const slotResult = this.boxesWithResults.at(boxIndex)?.boxSlots.at(boxSlot)
     return $O(slotResult).map(R.dropError).get()
   }
 

@@ -110,17 +110,18 @@ function AppWithBackend() {
     reloadSettings()
       .then(
         R.match(
-          async (settings) => appInfoDispatch({ type: 'load_settings', payload: settings }),
-          async (err) => displayErrorEvent('Error loading settings', err)
+          (settings) => appInfoDispatch({ type: 'load_settings', payload: settings }),
+          (err) => displayErrorEvent('Error loading settings', err)
         )
       )
+      .catch(console.error)
       .finally(() => setSettingsLoading(false))
   }, [appInfoState.error])
 
   // only on app start
   useEffect(() => {
     if (getPlatform() !== 'windows') return
-    const handler = buildKeyboardHandler(backend)
+    const handler = (e: KeyboardEvent) => void buildKeyboardHandler(backend)(e)
 
     window.addEventListener('keydown', handler)
     return () => {
@@ -233,10 +234,10 @@ function patchConsole(backend: BackendInterface) {
       if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null) {
         const context = args[0] as Record<string, unknown>
         context['callsite'] = callsite
-        backend.log(level, serializeArg(args.at(1)), JSON.parse(JSON.stringify(context)))
+        void backend.log(level, serializeArg(args.at(1)), JSON.parse(JSON.stringify(context)))
       } else {
         const message = formatWithPlaceholders(args)
-        backend.log(level, message, { callsite })
+        void backend.log(level, message, { callsite })
       }
     }
   }
@@ -263,34 +264,28 @@ function formatWithPlaceholders(args: unknown[]): string {
 }
 
 function serializeArg(arg: unknown): string {
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
   return typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
 }
 
 function buildKeyboardHandler(backend: BackendInterface) {
-  return (e: KeyboardEvent) => {
+  return async (e: KeyboardEvent) => {
     if (!e.ctrlKey) return
     switch (e.key) {
       case 'o':
-        backend.emitMenuEvent('open')
-        return
+        return backend.emitMenuEvent('open')
       case 's':
-        backend.emitMenuEvent('save')
-        return
+        return backend.emitMenuEvent('save')
       case 't':
-        backend.emitMenuEvent('reset')
-        return
+        return backend.emitMenuEvent('reset')
       case 'd':
-        backend.emitMenuEvent('open-appdata')
-        return
+        return backend.emitMenuEvent('open-appdata')
       case 'q':
-        backend.emitMenuEvent('exit')
-        return
+        return backend.emitMenuEvent('exit')
       case 'u':
-        backend.emitMenuEvent('check-updates')
-        return
+        return backend.emitMenuEvent('check-updates')
       case 'g':
-        backend.emitMenuEvent('visit-github')
-        return
+        return backend.emitMenuEvent('visit-github')
     }
   }
 }

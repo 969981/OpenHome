@@ -39,6 +39,14 @@ check: wasm-compile
 	@cd generate && pnpm run lint
 	@cd generate && pnpm run format
 
+.PHONY: oxlint
+oxlint:
+	@oxlint src
+
+.PHONY: eslint
+eslint:
+	@pnpm eslint src/ui/state --max-warnings 0 --report-unused-disable-directives -c eslint.config.mjs
+
 .PHONY: test
 test: ensure-dependencies
 	@pnpm run test
@@ -148,7 +156,8 @@ gen-wasm:
 .PHONY: gen-tauri-commands
 gen-tauri-commands:
 	@cargo test --package OpenHome --lib -- tests::export_typescript_bindings --exact --nocapture --include-ignored
-	@npx eslint --fix ./src/core/tauri/spectaCommands.ts
+	@npx eslint --fix --no-ignore ./src/core/tauri/spectaCommands.ts --suppress-all
+	@rm eslint-suppressions.json
 
 .PHONY: pkhex-json
 pkhex-json:

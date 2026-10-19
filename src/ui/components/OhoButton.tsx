@@ -1,7 +1,7 @@
-import { isThenable } from '@openhome-core/util/promise'
+import { Option } from '@openhome-core/util/functional'
 import { RadixColor } from '@openhome-ui/util/color'
 import { Button, Tooltip, type ButtonProps } from '@radix-ui/themes'
-import { useMemo, useState } from 'react'
+import { MouseEvent, MouseEventHandler, useMemo, useState } from 'react'
 import { AddIcon, RemoveIcon } from './Icons'
 
 export type OhoButtonType =
@@ -11,52 +11,26 @@ export type OhoButtonProps = Omit<ButtonProps, 'type'> & {
   type?: OhoButtonType
   disabledMessage?: string
   noPaddingX?: boolean
+  onClickAsync?: (e: MouseEvent) => Promise<void>
 }
 
 export default function OhoButton(props: OhoButtonProps) {
   const {
-    type: ohoButtonType,
     disabledMessage,
     style,
     children,
-    loading,
-    disabled: disabledProp,
-    variant: variantProp,
     noPaddingX,
+    onClick: onClickProp,
     ...buttonProps
   } = props
+  const [onClickAsyncLoading, setOnClickAsyncLoading] = useState(false)
 
-  const [asyncOnClickLoading, setAsyncOnClickLoading] = useState(false)
+  const color = buttonColor(props.type)
 
-  const color: RadixColor | undefined = useMemo(() => {
-    switch (ohoButtonType) {
-      case 'reset':
-      case 'clear':
-        return 'gray'
-      case 'delete':
-      case 'destructive':
-        return 'tomato'
-      case 'submit':
-        return 'green'
-      default:
-        return 'gray'
-    }
-  }, [ohoButtonType])
-
-  const radixType: ButtonProps['type'] = useMemo(() => {
-    switch (ohoButtonType) {
-      case 'add':
-      case 'destructive':
-        return 'submit'
-      case 'clear':
-        return 'reset'
-      default:
-        return undefined
-    }
-  }, [ohoButtonType])
+  const radixType = buttonType(props.type)
 
   const defaultText = useMemo(() => {
-    switch (ohoButtonType) {
+    switch (props.type) {
       case 'add':
         return 'Add'
       case 'delete':
@@ -68,10 +42,10 @@ export default function OhoButton(props: OhoButtonProps) {
       default:
         return undefined
     }
-  }, [ohoButtonType])
+  }, [props.type])
 
   const icon = useMemo(() => {
-    switch (ohoButtonType) {
+    switch (props.type) {
       case 'add':
         return <AddIcon />
       case 'delete':
@@ -79,11 +53,11 @@ export default function OhoButton(props: OhoButtonProps) {
       default:
         return undefined
     }
-  }, [ohoButtonType])
+  }, [props.type])
 
   const variant = useMemo(() => {
-    if (variantProp) return variantProp
-    switch (ohoButtonType) {
+    if (props.variant) return props.variant
+    switch (props.type) {
       case 'add':
       case 'submit':
       case 'delete':
@@ -94,25 +68,29 @@ export default function OhoButton(props: OhoButtonProps) {
       default:
         return 'surface'
     }
-  }, [ohoButtonType, variantProp])
+  }, [props.type, props.variant])
 
-  const disabled = loading || disabledProp || Boolean(disabledMessage)
+  const loading = props.loading || onClickAsyncLoading
+  const disabled = loading || props.disabled || Boolean(disabledMessage)
 
-  function onClick(e: React.MouseEvent<HTMLButtonElement>) {
-    const result = props.onClick?.(e)
-    if (isThenable(result)) {
-      setAsyncOnClickLoading(true)
-      result.then(() => setAsyncOnClickLoading(false))
-    }
-  }
+  const onClick: Option<MouseEventHandler<HTMLButtonElement>> = props.onClickAsync
+    ? (e: MouseEvent<HTMLButtonElement>) => {
+        setOnClickAsyncLoading(true)
+        props
+          .onClickAsync?.(e)
+          .catch(console.error)
+          .finally(() => setOnClickAsyncLoading(false))
+      }
+    : onClickProp
 
   const button = (
     <Button
       size="1"
       color={color}
+      // @ts-expect-error Radix UI is no longer maintained, this is likely an issue with the library
       type={radixType}
       variant={variant}
-      loading={loading || asyncOnClickLoading}
+      loading={loading}
       disabled={disabled}
       style={{
         minWidth: noPaddingX ? '0rem' : '4rem',
@@ -122,8 +100,8 @@ export default function OhoButton(props: OhoButtonProps) {
         aspectRatio: noPaddingX ? '1' : undefined,
         ...style,
       }}
-      {...buttonProps}
       onClick={onClick}
+      {...buttonProps}
     >
       {children ?? defaultText}
       {icon}
@@ -131,4 +109,31 @@ export default function OhoButton(props: OhoButtonProps) {
   )
 
   return disabledMessage ? <Tooltip content={disabledMessage}>{button}</Tooltip> : button
+}
+
+function buttonColor(buttonType: OhoButtonType): RadixColor {
+  switch (buttonType) {
+    case 'reset':
+    case 'clear':
+      return 'gray'
+    case 'delete':
+    case 'destructive':
+      return 'tomato'
+    case 'submit':
+      return 'green'
+    default:
+      return 'gray'
+  }
+}
+
+function buttonType(buttonType: OhoButtonType) {
+  switch (buttonType) {
+    case 'add':
+    case 'destructive':
+      return 'submit' as const
+    case 'clear':
+      return 'reset' as const
+    default:
+      return undefined
+  }
 }

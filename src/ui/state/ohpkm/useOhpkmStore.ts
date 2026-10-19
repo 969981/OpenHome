@@ -300,7 +300,7 @@ export function useOhpkmStore() {
     return R.Ok(mon)
   }
 
-  async function startTrackingNewMon<P extends PKMInterface>(
+  function startTrackingNewMon<P extends PKMInterface>(
     mon: P,
     sourceSave: Option<SAV<P>>,
     destSave: Option<SAV>
@@ -308,19 +308,25 @@ export function useOhpkmStore() {
     const ohpkm = sourceSave ? OHPKM.fromMonInSave(mon, sourceSave) : OHPKM.fromMonUnknownSave(mon)
     ohpkm.startedTrackingTimestamp = dayjs()
 
-    backend.log('INFO', `Starting to track ${mon.nickname} (${ohpkm.openhomeId})`)
+    backend
+      .log('INFO', `Starting to track ${mon.nickname} (${ohpkm.openhomeId})`)
+      .catch((error) =>
+        displayError('Error Logging Event', [
+          `When trying to log event "Starting to track ${mon.nickname} (${ohpkm.openhomeId})", an error was encountered:`,
+          String(error),
+        ])
+      )
 
     if (destSave) {
-      await handleLookupsUpdate(ohpkm, destSave)
+      handleLookupsUpdate(ohpkm, destSave)
+        .then(() => insertOrUpdate(ohpkm))
+        .catch((error) =>
+          displayError('Error Updating Lookup File for Save', [
+            `When updating the lookup entry for the OHPKM ${ohpkm.openhomeId} (${ohpkm.nickname}), an error was encountered:`,
+            String(error),
+          ])
+        )
     }
-
-    await insertOrUpdate(ohpkm).catch((error) => {
-      console.error(error)
-      displayError('Error Updating Lookup File for Save', [
-        `When updating the lookup entry for the OHPKM ${ohpkm.openhomeId} (${ohpkm.nickname}), an error was encountered:`,
-        String(error),
-      ])
-    })
 
     return ohpkm
   }
@@ -385,7 +391,7 @@ export function useOhpkmStore() {
     sourceSave: Option<SAV>,
     destSave: Option<SAV>
   ) {
-    return (await loadIfTracked(mon)) ?? (await startTrackingNewMon(mon, sourceSave, destSave))
+    return (await loadIfTracked(mon)) ?? startTrackingNewMon(mon, sourceSave, destSave)
   }
 
   async function monOrOhpkmIfTracked<P extends PKMInterface>(mon: P): Promise<OHPKM | P> {
@@ -407,7 +413,7 @@ export function useOhpkmStore() {
     mon: PKMInterface,
     save?: SAV
   ): PromisedResultBox<OHPKM, IdentifierNotPresentError> {
-    return R.after(tryLoadFromId(ohpkmId)).awaitMap(async (trackedData) => {
+    return R.after(tryLoadFromId(ohpkmId)).map((trackedData) => {
       const updates = trackedData.syncWithGameData(mon, save)
 
       if (updates.length > 0) {
@@ -439,23 +445,25 @@ export function useOhpkmStore() {
   }
 
   async function scanFullStoreAndFixHandlers(save: SAV) {
-    return R.after(backend.getOhpkmIdsMatchingUnknownHandler(save)).then(async (ohpkmIds) => {
-      for (const result of (await tryLoadBatch(ohpkmIds)).values()) {
-        await $R(result).match(
-          async (mon) => fixMissingHandlerIfPresent(save, mon),
-          async ({ identifier }) => {
-            return await backend.log(
-              'ERROR',
-              `Could not find OHPKM with identifier ${identifier}`,
-              {
-                ohpkm_id: identifier,
-                event: 'fix_unknown_handler_scan',
-              }
-            )
-          }
-        )
-      }
-    })
+    return R.after(backend.getOhpkmIdsMatchingUnknownHandler(save))
+      .awaitMap(async (ohpkmIds) => {
+        for (const result of (await tryLoadBatch(ohpkmIds)).values()) {
+          await $R(result).match(
+            async (mon) => fixMissingHandlerIfPresent(save, mon),
+            async ({ identifier }) => {
+              return await backend.log(
+                'ERROR',
+                `Could not find OHPKM with identifier ${identifier}`,
+                {
+                  ohpkm_id: identifier,
+                  event: 'fix_unknown_handler_scan',
+                }
+              )
+            }
+          )
+        }
+      })
+      .await()
   }
 
   function clearCache() {
